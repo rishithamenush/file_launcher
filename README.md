@@ -28,12 +28,11 @@ final result = await FileLauncher.open(file.path);
 
 ## Get started
 
-Until the package is published, point your app at this local checkout:
+Add the package to your app:
 
 ```yaml
 dependencies:
-  file_launcher:
-    path: ../file_launcher
+  file_launcher: ^0.1.0
 ```
 
 Import, open, and handle the result:

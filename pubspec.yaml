@@ -1,6 +1,8 @@
 name: file_launcher
 description: Open local files with native viewers on iOS and Android, with a share-sheet fallback and no storage permissions.
 version: 0.1.0
+repository: https://github.com/rishithamenush/file_launcher
+issue_tracker: https://github.com/rishithamenush/file_launcher/issues
 topics: [file, open-file, viewer, pdf, quick-look]
 screenshots:
   - description: Flutter example gallery with categorized local-file samples.

@@ -83,6 +83,8 @@ cd android
 
 Run `flutter test integration_test/plugin_integration_test.dart -d <device-id>` from `example` on a connected mobile device. Manual preview tests and release requirements are in [TESTING.md](../TESTING.md). CI runs Dart checks, Android unit tests, Android builds and unsigned iOS builds.
 
-## Before publishing
+## Release status
 
-Add the real public repository and issue-tracker URLs to `pubspec.yaml`, choose your publisher, capture actual device screenshots, and complete the device matrix before a 1.0.0 release. This checkout has not been published. Run `dart pub publish --dry-run` before release.
+Version 0.1.0 is the initial development release. See the [GitHub repository](https://github.com/rishithamenush/file_launcher) and [issue tracker](https://github.com/rishithamenush/file_launcher/issues).
+
+Physical-device acceptance, older-iOS verification and CocoaPods consumer checks remain pending. See [TESTING.md](../TESTING.md) before relying on a particular device/format combination. Complete these checks before a 1.0.0 release.
