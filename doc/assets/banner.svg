@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="720" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
+<title id="title">file_launcher — Local files. Native viewers.</title>
+<desc id="desc">A Flutter package for iOS and Android. Launch documents, images, audio, video, spreadsheets, presentations, archives, text, data and custom formats through native viewers or a share sheet.</desc>
+<rect width="1440" height="720" fill="#f5f3ee"/>
+<g font-family="Arial, Helvetica, sans-serif">
+  <path d="M64 48h18v26H64zm18 0 9 9v17H82" fill="none" stroke="#252623" stroke-width="2"/>
+  <path d="M82 48v9h9" fill="none" stroke="#252623" stroke-width="2"/>
+  <text x="107" y="71" font-size="27" font-weight="700" letter-spacing="-1" fill="#252623">file_launcher</text>
+  <text x="1376" y="67" text-anchor="end" font-family="Menlo, monospace" font-size="13" fill="#555750">FLUTTER PACKAGE / iOS + ANDROID</text>
+  <path d="M64 103H1376" stroke="#cecec5"/>
+
+  <rect x="64" y="160" width="9" height="9" fill="#d9512f"/>
+  <text x="85" y="170" font-family="Menlo, monospace" font-size="14" fill="#555750">A small API for the files in your app.</text>
+  <text x="58" y="277" font-size="86" font-weight="700" letter-spacing="-4.5" fill="#252623">Local files.</text>
+  <text x="58" y="374" font-size="86" font-weight="700" letter-spacing="-4.5" fill="#252623">Native viewers.</text>
+  <text x="64" y="430" font-size="23" fill="#62645c">From everyday files to custom formats.</text>
+  <text x="64" y="464" font-size="23" fill="#62645c">Native viewing, with a share-sheet fallback.</text>
+
+  <path d="M64 511H697" stroke="#cecec5"/>
+  <text x="64" y="551" font-family="Menlo, monospace" font-size="19" fill="#252623"><tspan fill="#b7452a">await</tspan> FileLauncher.open(file.path);</text>
+
+  <g transform="translate(827 153)">
+    <text x="0" y="17" font-family="Menlo, monospace" font-size="12" letter-spacing="1" fill="#696b62">MANY FILE TYPES. ONE API.</text>
+    <path d="M0 41H549" stroke="#252623" stroke-width="2"/>
+    <g transform="translate(0 65)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Documents</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">PDF · DOCX · RTF</text>
+    </g>
+    <g transform="translate(287 65)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Images</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">JPG · PNG · HEIC</text>
+    </g>
+    <g transform="translate(0 135)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Audio</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">MP3 · WAV · FLAC</text>
+    </g>
+    <g transform="translate(287 135)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Video</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">MP4 · MOV · WEBM</text>
+    </g>
+    <g transform="translate(0 205)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Spreadsheets</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">XLSX · XLS · ODS</text>
+    </g>
+    <g transform="translate(287 205)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Presentations</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">PPTX · PPT · KEY</text>
+    </g>
+    <g transform="translate(0 275)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Archives</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">ZIP · RAR · 7Z</text>
+    </g>
+    <g transform="translate(287 275)">
+      <path d="M2 4h16l8 8v27H2zM18 4v8h8" fill="none" stroke="#92958a" stroke-width="1.3"/>
+      <path d="M8 23h12M8 28h8" stroke="#d9512f" stroke-width="1.5"/>
+      <text x="40" y="21" font-size="21" fill="#252623">Text &amp; data</text>
+      <text x="40" y="44" font-family="Menlo, monospace" font-size="12" fill="#75766e">TXT · CSV · JSON</text>
+    </g>
+    <path d="M0 340H549" stroke="#252623" stroke-width="2"/>
+    <text x="0" y="372" font-size="21" fill="#252623">Custom &amp; other formats, too.</text>
+    <text x="0" y="400" font-size="15" fill="#62645c">Examples above, not a fixed list of accepted extensions.</text>
+    <text x="0" y="428" font-size="15" fill="#62645c">No compatible viewer? Try the system share sheet.</text>
+  </g>
+
+  <path d="M64 621H1376" stroke="#cecec5"/>
+  <text x="64" y="668" font-size="16" fill="#252623">No storage permission prompts.</text>
+  <text x="1376" y="668" text-anchor="end" font-size="14" fill="#75766e">Format support depends on the device and installed apps.</text>
+</g>
+</svg>
