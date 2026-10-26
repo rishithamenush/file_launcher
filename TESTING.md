@@ -14,6 +14,9 @@ Record date, hardware, OS, Flutter version, result status, response time and obs
 | Samsung Android 13 / 14 | Pending |
 | Android tablet / foldable, rotation and Activity recreation | Pending |
 | ChromeOS | Pending |
+| macOS 12+ (sandboxed example): open, share picker, no-app fallback | Pending |
+| Windows 10 / 11: default app, Open with dialog, cancel | Pending |
+| Linux (GNOME and KDE): xdg-open, missing handler | Pending |
 
 For each row, open PDF, PNG/JPG, DOCX, XLSX, MP4, MP3, M4A, WAV, AAC, FLAC, Ogg Vorbis, Ogg Opus, TXT, CSV, JSON, ZIP, an unknown extension and an extensionless file. The example bundles fixtures for these cases. Verify titles, filenames, dismissal and subsequent calls. iOS Quick Look capability and installed Android apps decide the result.
 
@@ -31,10 +34,13 @@ Additional checks:
 - On Android, the source is never changed; stale staged copies are removed on later calls.
 - Large files do not block the Android UI thread; low disk space returns error.
 - Web returns unsupportedPlatform without loading dart:io in the package itself.
+- `share()` skips the viewer on iOS, Android and macOS; the iPad and macOS popovers point at `sharePositionOrigin`.
+- `openBytes()` opens a PDF and an audio file from assets; `clearCache()` then removes the copies and returns false while a preview is open on iOS.
+- `showAppChooser` shows the chooser on Android and the Open with dialog on Windows.
 
 For small files, target a response within one second. The API does not impose a hard timeout: staging large files or OS work can take longer. Success means presentation / launch accepted, not that a recipient read or saved anything.
 
-Release gates: complete the matrix, test both CocoaPods and SPM in consumer apps, validate the minimum advertised Flutter version, add repository metadata and genuine screenshots, run publish dry-run, and review the package archive. Keep version 0.1.0 until these gates have evidence.
+Release gates: complete the matrix, test both CocoaPods and SPM in consumer apps, validate the minimum advertised Flutter version, add repository metadata and genuine screenshots, run publish dry-run, and review the package archive. Keep the development-preview label until these gates have evidence.
 
 ## Local validation — 4 October 2026
 
@@ -57,3 +63,13 @@ Release gates: complete the matrix, test both CocoaPods and SPM in consumer apps
 - Publication dry run accepts the new screenshot and assets; the existing missing-homepage/repository warning remains.
 - Real-device PDF rendering and audio playback remain pending. For each audio sample, listen to the tone, check play/pause/seek where available, close the player, and reopen another file. Record the receiving app and codec; a successful launch result alone is not a playback pass.
 - Updated Android debug APK and unsigned iOS release example both built successfully. Analysis and formatting checks are clean.
+
+## 0.2.0 validation — 26 October 2026
+
+- Flutter 3.44.8 / Dart 3.12.2: analysis and formatting clean for the package and example.
+- Dart package tests: 23 passed, including path and `file://` handling, `openBytes` name validation, option forwarding and the Linux/Windows desktop routing with fake processes.
+- Example widget tests: 4 passed.
+- Android native Robolectric tests: 20 passed, including the "Open with" chooser, share-only routing, bytes validation and reuse of already-staged files.
+- Builds: Android debug APK, unsigned iOS release, macOS debug. Windows and Linux were not built locally (no host); CI builds them.
+- macOS integration tests: 2 passed (missing file, share of a missing file, invalid `fileName`, `clearCache`).
+- Not yet observed on screen: real viewer launches, share sheets and choosers on any platform, and the Windows FFI path.

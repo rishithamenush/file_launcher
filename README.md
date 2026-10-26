@@ -2,17 +2,17 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.44%2B-02569B?style=flat-square" alt="Flutter 3.44+" />
-  <img src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android-087F72?style=flat-square" alt="iOS and Android" />
+  <img src="https://img.shields.io/badge/platforms-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-087F72?style=flat-square" alt="iOS, Android, macOS, Windows and Linux" />
   <img src="https://img.shields.io/badge/license-MIT-586579?style=flat-square" alt="MIT license" />
 </p>
 
-**Give local files a natural next step.** Open an invoice, listen to a recording, watch a clip or view a document using the device’s native UI—with a system share sheet when no viewer is available.
+**Give local files a natural next step.** Open an invoice, listen to a recording, watch a clip or view a document using the device’s native UI—on mobile and desktop, with a system share sheet when no viewer is available.
 
 ```dart
 final result = await FileLauncher.open(file.path);
 ```
 
-[Get started](#get-started) · [File types](#what-can-i-open) · [Try the gallery](#try-the-file-gallery) · [Results](#know-what-happened) · [Platform notes](doc/platform_notes.md)
+[Get started](#get-started) · [What’s new](#new-in-020) · [File types](#what-can-i-open) · [Try the gallery](#try-the-file-gallery) · [Results](#know-what-happened) · [Platform notes](doc/platform_notes.md)
 
 ## Small API. Useful details.
 
@@ -24,7 +24,7 @@ final result = await FileLauncher.open(file.path);
 | --- | --- | --- |
 | Share app-readable files using narrowly scoped, read-only Android URI grants. | Scene-aware iOS presentation and anchored iPad share popovers. | Clear result statuses. No waiting for the user to dismiss a viewer. |
 
-> **Development preview · 0.1.0.** Builds and automated checks are passing; the physical-device acceptance matrix is still pending. This is a native launcher: actual rendering and playback depend on the OS, installed viewer, file contents and codec.
+> **Development preview · 0.2.0.** Builds and automated checks are passing; the physical-device acceptance matrix is still pending. This is a native launcher: actual rendering and playback depend on the OS, installed viewer, file contents and codec.
 
 ## Get started
 
@@ -32,7 +32,7 @@ Add the package to your app:
 
 ```yaml
 dependencies:
-  file_launcher: ^0.1.0
+  file_launcher: ^0.2.0
 ```
 
 Import, open, and handle the result:
@@ -51,7 +51,37 @@ if (!result.isSuccess) {
 }
 ```
 
-**Requirements:** Flutter 3.44+, Dart 3.12+, Android API 24+. The iOS plugin declares iOS 13+; the example targets iOS 15 for Xcode 27. Older-iOS runtime verification is pending. CocoaPods and Swift Package Manager definitions are included; SPM has been build-verified. Web and desktop return `unsupportedPlatform`.
+## New in 0.2.0
+
+**Share directly.** Skip the viewer and go straight to the system share sheet. On iPad and macOS, pass the tapped widget's rectangle so the popover points at it:
+
+```dart
+final box = context.findRenderObject() as RenderBox;
+await FileLauncher.share(
+  report.path,
+  sharePositionOrigin: box.localToGlobal(Offset.zero) & box.size,
+);
+```
+
+**Open bytes.** Downloaded content or an asset can be opened without writing a file first. Keep the real extension in `fileName`:
+
+```dart
+final data = await rootBundle.load('assets/terms.pdf');
+await FileLauncher.openBytes(
+  data.buffer.asUint8List(),
+  fileName: 'terms.pdf',
+);
+```
+
+**Let the user pick the app.** `showAppChooser: true` shows Android's "Open with" chooser and the Windows "Open with" dialog every time, instead of the default app.
+
+**Clear private copies.** `await FileLauncher.clearCache();` deletes the copies made for Android sharing and by `openBytes`. Use it after handling sensitive documents, when no viewer is open.
+
+**Desktop.** macOS opens files in the default app and falls back to the share picker. Windows and Linux open the default app through the shell or `xdg-open`.
+
+**Clearer results.** `invalidPath`, `fileNotReadable` and `busy` replace the generic `error` for those cases, and `file://` URIs are accepted as paths.
+
+**Requirements:** Flutter 3.44+, Dart 3.12+, Android API 24+. The iOS plugin declares iOS 13+; the example targets iOS 15 for Xcode 27. Older-iOS runtime verification is pending. CocoaPods and Swift Package Manager definitions are included; SPM has been build-verified. macOS 10.15+ (the example targets macOS 12 for Xcode 27), Windows 10+ and Linux with `xdg-utils`. Web returns `unsupportedPlatform`.
 
 ## What can I open?
 
@@ -123,19 +153,22 @@ Choose **Audio** to try the players, or **Other** to explore the fallback. Each 
 | `done` | iOS presented a preview, or Android accepted a viewer launch | Let the user continue |
 | `shareSheet` | The system accepted a share-sheet launch | Let the user choose a destination |
 | `fileNotFound` | The path is missing or is a directory | Download or locate the file again |
-| `noAppToOpen` | Android could not launch a viewer or even a chooser | Suggest a compatible app |
+| `fileNotReadable` | The file exists but the app cannot read it | Check permissions or copy it again |
+| `invalidPath` | Not an absolute path or `file://` URI, or a `fileName` with separators | Fix the argument |
+| `busy` | Another file is being prepared or presented | Retry after it closes |
+| `noAppToOpen` | No viewer, chooser or share sheet could be launched | Suggest a compatible app |
 | `noViewController` | iOS has no active screen to present on | Retry when the app is visible |
 | `unsupportedPlatform` | This platform is not implemented | Hide or replace the open action |
-| `error` | Invalid input, unreadable file, busy presentation or another failure | Inspect `message` |
+| `error` | Malformed MIME type, APK, a declined presentation or another failure | Inspect `message` |
 
 `isSuccess` is true for `done` and `shareSheet`. Android may show an empty chooser if no receiving apps are installed; it cannot confirm that another app displayed the file. Neither success status means the user saved, read or played the file.
 
 ## A few things to know
 
-- **Local paths only.** Copy picker/download results to an app-readable file. URLs, `content://` strings, relative paths and directories are not file-path inputs.
+- **Local paths or bytes.** Pass an absolute path, a `file://` URI, or use `openBytes`. Web URLs, `content://` strings, relative paths and directories are not inputs.
 - **Keep the real extension.** Names such as `invoice.pdf` and `recording.m4a` help native viewers identify files correctly.
 - **Open while foregrounded.** Close the previous iOS preview before opening another. Calls during UI transitions can return an error to retry.
-- **Android stages a cache copy.** Large files take time and disk space. Copies are retained for up to seven days until a later call cleans them; the OS may evict them earlier. Originals are not changed.
+- **Android stages a cache copy.** Large files take time and disk space. Copies are retained for up to seven days until a later call cleans them, or until `clearCache()`; the OS may evict them earlier. Originals are not changed.
 - **No permission setup.** The plugin declares no storage, installation or broad package-query permissions, and needs no iOS Info.plist keys.
 
 [Read the platform and cache details →](doc/platform_notes.md)

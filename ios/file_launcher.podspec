@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'file_launcher'
-  s.version          = '0.1.0'
+  s.version          = '0.2.0'
   s.summary          = 'Open local files with native viewers on iOS and Android, with a share-sheet fallback and no storage permissions.'
   s.description      = <<-DESC
 Open local files with native viewers on iOS and Android, with a share-sheet fallback and no storage permissions.

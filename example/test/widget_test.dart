@@ -26,6 +26,24 @@ void main() {
     expect(find.text('M4A audio'), findsOneWidget);
     expect(find.text('PDF document'), findsNothing);
   });
+  testWidgets('offers share, memory, chooser and cache controls', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const FileLauncherExample());
+    expect(find.byTooltip('Share'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.text('Open from memory'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Ask which app every time'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Clear cached copies'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Clear cached copies'), findsOneWidget);
+  });
   testWidgets('every gallery entry has a nonempty bundled fixture', (
     tester,
   ) async {

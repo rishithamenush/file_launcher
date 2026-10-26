@@ -42,48 +42,82 @@ class FileLauncherPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activ
     override fun onDetachedFromActivity() { activity = null }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method != "open") { result.notImplemented(); return }
-        if (busy) { result.success(response("error", "Another file is being prepared")); return }
-        val path = call.argument<String>("path")
-        if (path.isNullOrEmpty() || !File(path).isAbsolute || path.contains('\u0000')) {
-            result.success(response("error", "Provide an absolute local file path")); return
+        when (call.method) {
+            "open", "share", "openBytes" -> prepare(call, result)
+            "clearCache" -> clearCache(result)
+            else -> result.notImplemented()
         }
-        val source = File(path)
-        if (!source.isFile) { result.success(response("fileNotFound", "No regular file at: $path")); return }
-        if (!source.canRead()) { result.success(response("error", "File is not readable")); return }
+    }
+
+    private fun prepare(call: MethodCall, result: MethodChannel.Result) {
+        if (busy) { result.success(response("busy", "Another file is being prepared")); return }
+        val bytes: ByteArray?
+        val source: File?
+        val name: String
+        if (call.method == "openBytes") {
+            bytes = call.argument<ByteArray>("bytes")
+            val fileName = call.argument<String>("fileName")
+            if (bytes == null || fileName.isNullOrEmpty() || fileName == "." || fileName == ".." ||
+                fileName.any { it == '/' || it == '\\' || it == '\u0000' }) {
+                result.success(response("invalidPath", "Provide a file name without path separators")); return
+            }
+            source = null
+            name = fileName
+        } else {
+            val path = call.argument<String>("path")
+            if (path.isNullOrEmpty() || !File(path).isAbsolute || path.contains('\u0000')) {
+                result.success(response("invalidPath", "Provide an absolute local file path")); return
+            }
+            bytes = null
+            source = File(path)
+            name = source.name
+            if (!source.isFile) { result.success(response("fileNotFound", "No regular file at: $path")); return }
+            if (!source.canRead()) { result.success(response("fileNotReadable", "File is not readable")); return }
+        }
         val mime = try {
-            FileTypeResolver.resolve(source, call.argument<String>("mimeType"))
+            FileTypeResolver.resolve(File(name), call.argument<String>("mimeType"))
         } catch (error: IllegalArgumentException) {
             result.success(response("error", error.message ?: "Invalid MIME type")); return
         }
-        if (source.extension.equals("apk", ignoreCase = true) || mime.equals("application/vnd.android.package-archive", ignoreCase = true)) {
+        if (name.endsWith(".apk", ignoreCase = true) || mime.equals("application/vnd.android.package-archive", ignoreCase = true)) {
             result.success(response("error", "APK installation is not supported")); return
         }
+        val mode = when {
+            call.method == "share" -> LaunchMode.SHARE
+            call.argument<Boolean>("showAppChooser") == true -> LaunchMode.CHOOSER
+            else -> LaunchMode.VIEW
+        }
+        val title = call.argument<String>("title")?.takeIf { it.isNotBlank() } ?: name
         busy = true
-        // Copy off the UI thread into the only directory exposed by FileProvider.
+        // Stage off the UI thread into the only directory exposed by FileProvider.
         worker.execute {
             var staged: File? = null
             try {
-                val root = File(context.cacheDir, "file_launcher")
+                val root = stagingRoot()
                 root.mkdirs()
+                // A file already inside the staging root is shared as-is, without a copy.
+                val existing = source?.let { stagedEntry(root, it) }
                 // Retain copies for seven days. Never remove them when a viewer closes:
                 // recipients can continue to read asynchronously.
                 val expiry = System.currentTimeMillis() - 7L * 24 * 60 * 60 * 1000
-                root.listFiles()?.filter { it.lastModified() < expiry }?.forEach { it.deleteRecursively() }
-                val directory = File(root, UUID.randomUUID().toString())
-                check(directory.mkdirs()) { "Could not create sharing cache" }
-                val copy = File(directory, source.name)
-                staged = copy
-                source.copyTo(copy)
+                root.listFiles()?.filter { it != existing && it.lastModified() < expiry }?.forEach { it.deleteRecursively() }
+                val file = if (existing != null) source!!.canonicalFile else {
+                    val directory = File(root, UUID.randomUUID().toString())
+                    check(directory.mkdirs()) { "Could not create sharing cache" }
+                    staged = directory
+                    File(directory, name).also { copy ->
+                        if (bytes != null) copy.writeBytes(bytes) else source!!.copyTo(copy)
+                    }
+                }
                 main.post {
                     try {
-                        result.success(if (attached) launch(copy, mime) else response("error", "Plugin detached before launch"))
+                        result.success(if (attached) launch(file, mime, mode, title) else response("error", "Plugin detached before launch"))
                     } catch (error: Exception) {
                         result.success(response("error", error.message ?: "Could not launch file"))
                     } finally { busy = false }
                 }
             } catch (error: Exception) {
-                staged?.parentFile?.deleteRecursively()
+                staged?.deleteRecursively()
                 main.post {
                     busy = false
                     result.success(response("error", error.message ?: "Could not prepare file"))
@@ -92,20 +126,49 @@ class FileLauncherPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activ
         }
     }
 
-    private fun launch(file: File, mime: String): Map<String, String> {
+    private fun clearCache(result: MethodChannel.Result) {
+        if (busy) { result.success(false); return }
+        busy = true
+        worker.execute {
+            val root = stagingRoot()
+            val cleared = !root.exists() || root.deleteRecursively()
+            main.post {
+                busy = false
+                result.success(cleared)
+            }
+        }
+    }
+
+    private fun launch(file: File, mime: String, mode: LaunchMode, title: String): Map<String, String> {
         val host = activity
         if (host == null || host.isFinishing || host.isDestroyed) {
             return response("error", "No foreground Activity; retry when the app is visible")
         }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.file_launcher.provider", file)
-        val status = FileLaunchIntents.open(uri, mime, file.name) { host.startActivity(it) }
+        val status = FileLaunchIntents.open(uri, mime, file.name, mode, title) { host.startActivity(it) }
         val message = when (status) {
-            "done" -> "Viewer launch accepted for $mime"
+            "done" -> if (mode == LaunchMode.CHOOSER) "App chooser launch accepted for $mime" else "Viewer launch accepted for $mime"
             "shareSheet" -> "Share-sheet launch accepted for $mime"
             else -> "No activity can open or share this file"
         }
         return response(status, message)
     }
 
+    private fun stagingRoot() = File(context.cacheDir, "file_launcher")
+
     private fun response(status: String, message: String) = mapOf("status" to status, "message" to message)
+
+    internal companion object {
+        /** The top-level entry of [root] that contains [file], or null if [file] is outside it. */
+        fun stagedEntry(root: File, file: File): File? {
+            val canonicalRoot = root.canonicalFile
+            var current: File? = file.canonicalFile
+            while (current != null) {
+                val parent = current.parentFile
+                if (parent == canonicalRoot) return current
+                current = parent
+            }
+            return null
+        }
+    }
 }

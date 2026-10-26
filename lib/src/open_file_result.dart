@@ -9,7 +9,16 @@ enum OpenFileStatus {
   /// The path does not point to an existing regular file.
   fileNotFound,
 
-  /// Android could launch neither a viewer nor a share sheet.
+  /// The file exists but this app cannot read it.
+  fileNotReadable,
+
+  /// The path is not absolute, or a file name is not a single path segment.
+  invalidPath,
+
+  /// Another file is being prepared or presented. Retry when it is closed.
+  busy,
+
+  /// No viewer, chooser or share sheet could be launched.
   noAppToOpen,
 
   /// iOS has no active screen on which to present.

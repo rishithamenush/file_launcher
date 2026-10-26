@@ -14,13 +14,64 @@ class MethodChannelFileLauncher extends FileLauncherPlatform {
     String filePath, {
     String? title,
     String? mimeType,
-  }) async {
+    bool showAppChooser = false,
+    Rect? sharePositionOrigin,
+  }) => _launch('open', {
+    'path': filePath,
+    'title': title,
+    'mimeType': mimeType,
+    'showAppChooser': showAppChooser,
+    'origin': _origin(sharePositionOrigin),
+  });
+
+  @override
+  Future<OpenFileResult> share(
+    String filePath, {
+    String? title,
+    String? mimeType,
+    Rect? sharePositionOrigin,
+  }) => _launch('share', {
+    'path': filePath,
+    'title': title,
+    'mimeType': mimeType,
+    'origin': _origin(sharePositionOrigin),
+  });
+
+  @override
+  Future<OpenFileResult> openBytes(
+    Uint8List bytes, {
+    required String fileName,
+    String? title,
+    String? mimeType,
+    bool showAppChooser = false,
+    Rect? sharePositionOrigin,
+  }) => _launch('openBytes', {
+    'bytes': bytes,
+    'fileName': fileName,
+    'title': title,
+    'mimeType': mimeType,
+    'showAppChooser': showAppChooser,
+    'origin': _origin(sharePositionOrigin),
+  });
+
+  @override
+  Future<bool> clearCache() async {
     try {
-      final response = await methodChannel.invokeMethod<Object?>('open', {
-        'path': filePath,
-        'title': title,
-        'mimeType': mimeType,
-      });
+      return await methodChannel.invokeMethod<bool>('clearCache') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<OpenFileResult> _launch(
+    String method,
+    Map<String, Object?> arguments,
+  ) async {
+    try {
+      final response = await methodChannel.invokeMethod<Object?>(
+        method,
+        arguments,
+      );
       if (response is! Map) {
         return const OpenFileResult(
           OpenFileStatus.error,
@@ -42,4 +93,13 @@ class MethodChannelFileLauncher extends FileLauncherPlatform {
       );
     }
   }
+
+  static Map<String, double>? _origin(Rect? rect) => rect == null
+      ? null
+      : {
+          'x': rect.left,
+          'y': rect.top,
+          'width': rect.width,
+          'height': rect.height,
+        };
 }

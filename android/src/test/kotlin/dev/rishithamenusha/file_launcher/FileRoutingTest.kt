@@ -81,6 +81,28 @@ class FileRoutingTest {
         assertEquals(uri, send.clipData!!.getItemAt(0).uri)
         assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, send.flags)
     }
+    @Test fun appChooserWrapsTheViewerIntent() {
+        val calls = mutableListOf<Intent>()
+        assertEquals("done", FileLaunchIntents.open(uri, "application/pdf", "a.pdf", LaunchMode.CHOOSER, "Open invoice") { calls.add(it) })
+        val chooser = calls.single()
+        assertEquals(Intent.ACTION_CHOOSER, chooser.action)
+        assertEquals("Open invoice", chooser.getCharSequenceExtra(Intent.EXTRA_TITLE))
+        @Suppress("DEPRECATION")
+        val view = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+        assertEquals(Intent.ACTION_VIEW, view.action)
+        assertEquals(uri, view.data)
+        assertEquals("application/pdf", view.type)
+        assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, view.flags)
+        assertEquals(uri, chooser.clipData!!.getItemAt(0).uri)
+    }
+    @Test fun shareModeSkipsTheViewer() {
+        val calls = mutableListOf<Intent>()
+        assertEquals("shareSheet", FileLaunchIntents.open(uri, "image/png", "a.png", LaunchMode.SHARE) { calls.add(it) })
+        val chooser = calls.single()
+        assertEquals(Intent.ACTION_CHOOSER, chooser.action)
+        @Suppress("DEPRECATION")
+        assertEquals(Intent.ACTION_SEND, chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!.action)
+    }
     @Test fun absentViewerAndChooserReturnsNoApp() {
         assertEquals("noAppToOpen", FileLaunchIntents.open(uri, "application/pdf", "a.pdf") { throw ActivityNotFoundException() })
     }

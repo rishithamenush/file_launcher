@@ -11,7 +11,10 @@
 | Multi-window apps | Prefers the engine's window; refuses an ambiguous fallback |
 | Android API 24+ | External viewer, then Android share chooser |
 | Tablets / foldables / ChromeOS | Same Android implementation; device testing pending |
-| Web / macOS / Windows / Linux | Returns `unsupportedPlatform` |
+| macOS 10.15+ | Default app via `NSWorkspace`; `NSSharingServicePicker` for `share()` and when no app is registered |
+| Windows 10+ | `ShellExecuteW` default action; `SHOpenWithDialog` when `showAppChooser` is true; no share sheet |
+| Linux | `xdg-open`; no share sheet |
+| Web | Returns `unsupportedPlatform` |
 
 Current build baseline: **Flutter 3.44+ / Dart 3.12+**, Android compile SDK 36, Java 17 and the generated AGP 9 toolchain. iOS includes Swift Package Manager and CocoaPods definitions. The example targets iOS 15 for Xcode 27; the plugin itself declares iOS 13, which still needs an older-toolchain check. Lower Dart/Flutter bounds from the initial proposal are intentionally not claimed: older host build systems need separate compatibility work and testing. Run native presentation while the app is foregrounded. On Android, a detached Activity produces `error`; retry when visible.
 
@@ -36,20 +39,32 @@ Support depends on the OS, file contents and installed apps. The example include
 | `done` | Native preview presented, or Android accepted the viewer intent |
 | `shareSheet` | System accepted the share-sheet presentation |
 | `fileNotFound` | Path does not identify an existing regular file |
-| `noAppToOpen` | Android could not launch either a viewer or a chooser |
+| `fileNotReadable` | File exists but cannot be read |
+| `invalidPath` | Path is not absolute or a valid `file://` URI, or `fileName` is not a single segment |
+| `busy` | Another call is preparing a file, or an iOS presentation is open or transitioning |
+| `noAppToOpen` | No viewer, chooser or share sheet could be launched |
 | `noViewController` | iOS has no active presentation screen |
 | `unsupportedPlatform` | Current platform is unsupported |
-| `error` | Invalid input, unreadable file, busy presentation, missing plugin, or another failure |
+| `error` | Malformed MIME type, APK, missing plugin, declined presentation or another failure |
 
 `OpenFileResult.message` is a diagnostic, not a stable identifier. `isSuccess` is true for `done` and `shareSheet`. `open()` catches failures and returns a result; it never waits for dismissal. Android cannot confirm another app rendered the file, and its chooser can open even if it has no eligible recipients. `noAppToOpen` means the chooser itself could not launch.
 
-On iOS, close the previous preview or share sheet before opening another. Calls during presentation transitions return `error` so they can be retried. Android rejects concurrent calls while preparing a file.
+On iOS, close the previous preview or share sheet before opening another. Calls during presentation transitions return `busy` so they can be retried. Android rejects concurrent calls while preparing a file with `busy`.
+
+### Desktop behavior
+
+- **macOS** answers before the share picker appears, so `shareSheet` means the picker was requested. `showAppChooser` is ignored; macOS has no system "Open with" dialog.
+- **Windows** runs the shell call on a background isolate. With `showAppChooser`, the result arrives after the user picks an app or closes the dialog; both report `done`.
+- **Linux** waits up to five seconds for `xdg-open` to exit. A launcher that is still running is reported as `done`. Exit codes 3 and 4 map to `noAppToOpen`.
+- `share()` returns `unsupportedPlatform` on Windows and Linux. `title` and `mimeType` are ignored on desktop.
 
 ## Permissions and cache behavior
 
 No storage, package-installation or package-query permissions are declared. No iOS Info.plist keys are required. Android grants read access to one `content://` URI through the plugin's own FileProvider.
 
-Android copies each selected file into `cache/file_launcher/<unique-id>/` on a background worker, then exposes only that directory. This also supports app documents folders outside `filesDir`, without a broad filesystem-root provider mapping. Copies retain the original filename and extension; space and copy time scale with file size. Copies older than seven days are removed on a subsequent call; the OS can evict cache files earlier. Copies remain after cancellation, so apps handling sensitive material should account for cache retention. Original files are never modified or deleted.
+Android copies each selected file into `cache/file_launcher/<unique-id>/` on a background worker, then exposes only that directory. This also supports app documents folders outside `filesDir`, without a broad filesystem-root provider mapping. Copies retain the original filename and extension; space and copy time scale with file size. Copies older than seven days are removed on a subsequent call; the OS can evict cache files earlier. Copies remain after cancellation, so apps handling sensitive material should call `FileLauncher.clearCache()` once no viewer is reading them. Original files are never modified or deleted. A file that is already inside `cache/file_launcher/` is shared directly, without another copy.
+
+`openBytes` writes into the same staging directory on Android, into `NSTemporaryDirectory()/file_launcher/` on iOS and macOS, and into the system temp directory's `file_launcher` folder on Windows and Linux. `clearCache()` removes that folder; it returns `false` while a file is being prepared or an iOS preview is open.
 
 This follows [Android's FileProvider guidance](https://developer.android.com/privacy-and-security/risks/file-providers) to avoid broad root paths. Do not pass secrets your app does not intend to share.
 
@@ -85,6 +100,6 @@ Run `flutter test integration_test/plugin_integration_test.dart -d <device-id>` 
 
 ## Release status
 
-Version 0.1.0 is the initial development release. See the [GitHub repository](https://github.com/rishithamenush/file_launcher) and [issue tracker](https://github.com/rishithamenush/file_launcher/issues).
+Version 0.2.0 adds sharing, in-memory files, cache control and desktop support. See the [GitHub repository](https://github.com/rishithamenush/file_launcher) and [issue tracker](https://github.com/rishithamenush/file_launcher/issues).
 
 Physical-device acceptance, older-iOS verification and CocoaPods consumer checks remain pending. See [TESTING.md](../TESTING.md) before relying on a particular device/format combination. Complete these checks before a 1.0.0 release.

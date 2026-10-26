@@ -1,9 +1,9 @@
 name: file_launcher
-description: Open local files with native viewers on iOS and Android, with a share-sheet fallback and no storage permissions.
-version: 0.1.0
+description: Open local files or in-memory bytes with native viewers on iOS, Android, macOS, Windows and Linux, with a share-sheet fallback and no storage permissions.
+version: 0.2.0
 repository: https://github.com/rishithamenush/file_launcher
 issue_tracker: https://github.com/rishithamenush/file_launcher/issues
-topics: [file, open-file, viewer, pdf, quick-look]
+topics: [file, open-file, viewer, share, quick-look]
 screenshots:
   - description: Flutter example gallery with categorized local-file samples.
     path: doc/assets/example-gallery.png
@@ -13,6 +13,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  ffi: ^2.1.0
   plugin_platform_interface: ^2.1.8
 dev_dependencies:
   flutter_test:
@@ -26,3 +27,9 @@ flutter:
         pluginClass: FileLauncherPlugin
       ios:
         pluginClass: FileLauncherPlugin
+      macos:
+        pluginClass: FileLauncherPlugin
+      windows:
+        dartPluginClass: FileLauncherDesktop
+      linux:
+        dartPluginClass: FileLauncherDesktop

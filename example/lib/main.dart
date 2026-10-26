@@ -34,29 +34,61 @@ class _SamplePageState extends State<SamplePage> {
   bool _busy = false;
   Future<Directory>? _directory;
 
-  Future<void> _open(FileSample sample, {bool missing = false}) async {
+  bool _fromMemory = false;
+  bool _askEveryTime = false;
+
+  Future<void> _open(
+    FileSample sample, {
+    bool missing = false,
+    bool share = false,
+    Rect? origin,
+  }) async {
     setState(() {
       _busy = true;
       _result = null;
       _status = 'Preparing ${sample.label.toLowerCase()}…';
     });
     try {
-      final directory = await (_directory ??= Directory.systemTemp.createTemp(
-        'file_launcher_example_',
-      ));
-      final file = File('${directory.path}/${sample.name}');
-      if (!missing) {
-        final bytes = await rootBundle.load('assets/${sample.name}');
-        await file.writeAsBytes(
-          bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+      final OpenFileResult result;
+      final watch = Stopwatch();
+      if (_fromMemory && !missing && !share) {
+        final data = await rootBundle.load('assets/${sample.name}');
+        watch.start();
+        result = await FileLauncher.openBytes(
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+          fileName: sample.name,
+          title: sample.label,
+          mimeType: sample.mimeType,
+          showAppChooser: _askEveryTime,
+          sharePositionOrigin: origin,
         );
+      } else {
+        final directory = await (_directory ??= Directory.systemTemp.createTemp(
+          'file_launcher_example_',
+        ));
+        final file = File('${directory.path}/${sample.name}');
+        if (!missing) {
+          final bytes = await rootBundle.load('assets/${sample.name}');
+          await file.writeAsBytes(
+            bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+          );
+        }
+        watch.start();
+        result = share
+            ? await FileLauncher.share(
+                file.path,
+                title: sample.label,
+                mimeType: sample.mimeType,
+                sharePositionOrigin: origin,
+              )
+            : await FileLauncher.open(
+                file.path,
+                title: sample.label,
+                mimeType: sample.mimeType,
+                showAppChooser: _askEveryTime,
+                sharePositionOrigin: origin,
+              );
       }
-      final watch = Stopwatch()..start();
-      final result = await FileLauncher.open(
-        file.path,
-        title: sample.label,
-        mimeType: sample.mimeType,
-      );
       if (mounted) {
         setState(() {
           _result = result;
@@ -73,6 +105,25 @@ class _SamplePageState extends State<SamplePage> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  Future<void> _clearCache() async {
+    final cleared = await FileLauncher.clearCache();
+    if (mounted) {
+      setState(() {
+        _result = null;
+        _status = cleared
+            ? 'Cleared the private copies made by file_launcher.'
+            : 'Could not clear copies now. Close any open viewer and retry.';
+      });
+    }
+  }
+
+  static Rect? _originOf(BuildContext context) {
+    final box = context.findRenderObject();
+    return box is RenderBox && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
   }
 
   @override
@@ -150,7 +201,7 @@ class _SamplePageState extends State<SamplePage> {
                       runSpacing: 8,
                       children: [
                         for (final label in [
-                          'iOS + Android',
+                          'Mobile + desktop',
                           '${fileSamples.length} samples',
                           'No storage prompts',
                         ])
@@ -246,55 +297,97 @@ class _SamplePageState extends State<SamplePage> {
               for (final sample in visible)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 9),
-                  child: Material(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 5,
-                      ),
-                      leading: Container(
-                        width: 42,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: const Color(0xffe8f5f0),
-                          borderRadius: BorderRadius.circular(12),
+                  child: Builder(
+                    builder: (row) => Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Icon(
-                          sample.icon,
-                          color: const Color(0xff087f72),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 5,
                         ),
-                      ),
-                      title: Text(
-                        sample.label,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                        leading: Container(
+                          width: 42,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: const Color(0xffe8f5f0),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            sample.icon,
+                            color: const Color(0xff087f72),
+                          ),
                         ),
-                      ),
-                      subtitle: Text(
-                        '${sample.name} · ${sample.detail}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xff5c7180),
+                        title: Text(
+                          sample.label,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
+                        subtitle: Text(
+                          '${sample.name} · ${sample.detail}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xff5c7180),
+                          ),
+                        ),
+                        trailing: Builder(
+                          builder: (button) => IconButton(
+                            tooltip: 'Share',
+                            icon: const Icon(
+                              Icons.ios_share,
+                              size: 20,
+                              color: Color(0xff087f72),
+                            ),
+                            onPressed: _busy
+                                ? null
+                                : () => _open(
+                                    sample,
+                                    share: true,
+                                    origin: _originOf(button),
+                                  ),
+                          ),
+                        ),
+                        onTap: _busy
+                            ? null
+                            : () => _open(sample, origin: _originOf(row)),
                       ),
-                      trailing: const Icon(
-                        Icons.north_east,
-                        size: 18,
-                        color: Color(0xff087f72),
-                      ),
-                      onTap: _busy ? null : () => _open(sample),
                     ),
                   ),
                 ),
+              const SizedBox(height: 6),
+              Material(
+                color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: Color(0xffdce5ea)),
+                ),
+                child: Column(
+                  children: [
+                    SwitchListTile(
+                      title: const Text('Open from memory'),
+                      subtitle: const Text('Uses FileLauncher.openBytes'),
+                      value: _fromMemory,
+                      onChanged: (value) => setState(() => _fromMemory = value),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Ask which app every time'),
+                      subtitle: const Text('Android and Windows'),
+                      value: _askEveryTime,
+                      onChanged: (value) =>
+                          setState(() => _askEveryTime = value),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 10),
               const Text(
-                'iOS uses Quick Look. Android uses an installed viewer. When no viewer is available, the system share sheet is the fallback. Close native UI before opening another sample.',
+                'iOS uses Quick Look. Android, macOS, Windows and Linux use an installed app. When no viewer is available on mobile or macOS, the system share sheet is the fallback. Tap the share icon to skip the viewer. Close native UI before opening another sample.',
                 style: TextStyle(
                   fontSize: 12,
                   height: 1.5,
@@ -315,6 +408,10 @@ class _SamplePageState extends State<SamplePage> {
                         missing: true,
                       ),
                 child: const Text('Test a missing file'),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _clearCache,
+                child: const Text('Clear cached copies'),
               ),
             ],
           ),
